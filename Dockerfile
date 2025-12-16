@@ -27,7 +27,7 @@ RUN set -eux; \
         apt-get autoremove -y; \
         rm -rf /var/lib/apt/lists/*; \
     fi; \
-    if [ ! -f /opt/appdynamics/javaagent.jar ]; then echo "Provide APPD_AGENT_URL to supply the AppDynamics agent"; exit 1; fi
+    if [ -n "${APPD_AGENT_URL:-}" ] && [ ! -f /opt/appdynamics/javaagent.jar ]; then echo "Provide APPD_AGENT_URL to supply the AppDynamics agent"; exit 1; fi
 
 # Expose application port
 EXPOSE 8080
@@ -41,10 +41,10 @@ ENV APPDYNAMICS_CONTROLLER_HOST_NAME="" \
     APPDYNAMICS_AGENT_NODE_NAME="petclinic-node" \
     APPDYNAMICS_AGENT_ACCOUNT_NAME="customer1" \
     APPDYNAMICS_AGENT_ACCOUNT_ACCESS_KEY="" \
-    JAVA_TOOL_OPTIONS="-javaagent:/opt/appdynamics/javaagent.jar"
+    JAVA_TOOL_OPTIONS=""
 
 # Default profile can be overridden at runtime via SPRING_PROFILES_ACTIVE
 ENV SPRING_PROFILES_ACTIVE=""
 
 # Start the application with AppDynamics instrumentation
-ENTRYPOINT ["sh", "-c", "java ${JAVA_TOOL_OPTIONS:+$JAVA_TOOL_OPTIONS }-jar /app/petclinic.jar"]
+ENTRYPOINT ["sh", "-c", "if [ -f /opt/appdynamics/javaagent.jar ]; then JAVA_TOOL_OPTIONS=\"-javaagent:/opt/appdynamics/javaagent.jar ${JAVA_TOOL_OPTIONS:-}\"; fi; exec java ${JAVA_TOOL_OPTIONS:+$JAVA_TOOL_OPTIONS }-jar /app/petclinic.jar"]
