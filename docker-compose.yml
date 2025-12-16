@@ -1,6 +1,6 @@
 services:
   mysql:
-    image: mysql:9.5
+    image: mysql:8.4
     ports:
       - "3306:3306"
     environment:
@@ -9,8 +9,12 @@ services:
       - MYSQL_USER=petclinic
       - MYSQL_PASSWORD=petclinic
       - MYSQL_DATABASE=petclinic
-    volumes:
-      - "./conf.d:/etc/mysql/conf.d:ro"
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-uroot", "--silent"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
   postgres:
     image: postgres:18.1
     ports:
@@ -19,13 +23,20 @@ services:
       - POSTGRES_PASSWORD=petclinic
       - POSTGRES_USER=petclinic
       - POSTGRES_DB=petclinic
+    healthcheck:
+      test: ["CMD", "pg_isready", "-d", "petclinic", "-U", "petclinic"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
   app:
     build:
       context: .
       dockerfile: Dockerfile
     image: petclinic-appd:latest
     depends_on:
-      - mysql
+      mysql:
+        condition: service_healthy
     environment:
       - SPRING_PROFILES_ACTIVE=${SPRING_PROFILES_ACTIVE:-mysql}
       - APPDYNAMICS_CONTROLLER_HOST_NAME=${APPDYNAMICS_CONTROLLER_HOST_NAME:-}

@@ -50,7 +50,7 @@ To build an AppDynamics-enabled image, use the provided Dockerfile instead of th
 - Build with Docker Compose (preferred for using the compose profiles below):
 
   ```bash
-  docker compose build petclinic
+  docker compose build app
   ```
 
 - Build directly with Docker:
@@ -84,6 +84,87 @@ docker run \
 
 The `--env-file` flag is optional but useful for keeping your controller credentials outside of the compose file.
 
+### End-to-end Docker deployment (with AppDynamics)
+
+Follow these steps to clone the repository, build the AppDynamics-enabled image, and run it with Docker:
+
+1. **Clone and enter the repository** (replace the URL with your fork if needed):
+
+   ```bash
+   git clone https://github.com/your-org/spring-petclinic-appd.git
+   cd spring-petclinic-appd
+   ```
+
+2. **(Optional) Prepare controller credentials** in a file so you don't type them each time:
+
+   ```bash
+   cat > appd.env <<'EOF'
+   APPDYNAMICS_CONTROLLER_HOST_NAME=<controller-host>
+   APPDYNAMICS_CONTROLLER_PORT=<controller-port>
+   APPDYNAMICS_CONTROLLER_SSL_ENABLED=<true|false>
+   APPDYNAMICS_AGENT_ACCOUNT_NAME=<account-name>
+   APPDYNAMICS_AGENT_ACCOUNT_ACCESS_KEY=<access-key>
+   APPDYNAMICS_AGENT_APPLICATION_NAME=<application-name>
+   APPDYNAMICS_AGENT_TIER_NAME=<tier-name>
+   APPDYNAMICS_AGENT_NODE_NAME=<node-name>
+   EOF
+   ```
+
+3. **Build the image** (the multi-stage Dockerfile compiles the JAR for you):
+
+   ```bash
+   docker build -t petclinic-appd .
+   ```
+
+   If you want the image to download an AppDynamics agent at build time, supply a public or internally reachable ZIP URL:
+
+   ```bash
+   docker build --build-arg APPD_AGENT_URL=https://<path-to-agent-zip> -t petclinic-appd .
+   ```
+
+4. **Choose a database** (MySQL by default). Start one with Docker Compose:
+
+   - MySQL (default profile):
+
+     ```bash
+     docker compose up -d mysql
+     ```
+
+     The compose file no longer binds a host `conf.d` directory into MySQL, so Docker Desktop users do not need to adjust file-sharing settings. If you want to supply custom MySQL configuration later, create a `conf.d` folder, ensure it is shared in Docker Desktop (Preferences → Resources → File Sharing), and add a bind mount back into `docker-compose.yml` (e.g., `./conf.d:/etc/mysql/conf.d:ro`). A healthcheck is also configured so the `app` service will wait until MySQL is ready before attempting to connect.
+
+   - PostgreSQL:
+
+     ```bash
+     docker compose up -d postgres
+     ```
+
+5. **Run the application container** (attach AppDynamics env vars or the `appd.env` file):
+
+   - MySQL profile (default):
+
+     ```bash
+     docker run -p 8080:8080 --env-file appd.env petclinic-appd
+     ```
+
+   - PostgreSQL profile:
+
+     ```bash
+     docker run -p 8080:8080 --env-file appd.env -e SPRING_PROFILES_ACTIVE=postgres petclinic-appd
+     ```
+
+   If you prefer to use the compose file for both app and database, run:
+
+   ```bash
+   docker compose --env-file appd.env up -d app mysql      # MySQL
+   SPRING_PROFILES_ACTIVE=postgres docker compose --env-file appd.env up -d app postgres
+   ```
+
+6. **Visit the application** at <http://localhost:8080> and check logs if needed:
+
+   ```bash
+   docker logs -f $(docker ps -q --filter "ancestor=petclinic-appd")
+   ```
+
 ## In case you find a bug/suggested improvement for Spring Petclinic
 
 Our issue tracker is available [here](https://github.com/spring-projects/spring-petclinic/issues).
@@ -99,7 +180,7 @@ A similar setup is provided for MySQL and PostgreSQL if a persistent database co
 You can start MySQL or PostgreSQL locally with whatever installer works for your OS or use docker:
 
 ```bash
-docker run -e MYSQL_USER=petclinic -e MYSQL_PASSWORD=petclinic -e MYSQL_ROOT_PASSWORD=root -e MYSQL_DATABASE=petclinic -p 3306:3306 mysql:9.5
+docker run -e MYSQL_USER=petclinic -e MYSQL_PASSWORD=petclinic -e MYSQL_ROOT_PASSWORD=root -e MYSQL_DATABASE=petclinic -p 3306:3306 mysql:8.4
 ```
 
 or

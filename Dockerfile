@@ -1,3 +1,16 @@
+# Build stage: compile the Spring Petclinic application
+FROM eclipse-temurin:17-jdk AS build
+WORKDIR /workspace
+
+# Cache dependencies
+COPY pom.xml mvnw mvnw.cmd ./
+COPY .mvn .mvn
+RUN ./mvnw -B -DskipTests dependency:go-offline
+
+# Build the application
+COPY src src
+RUN ./mvnw -B -DskipTests package
+
 # Runtime image for Spring Petclinic with AppDynamics Java agent
 FROM eclipse-temurin:17-jre
 
@@ -9,7 +22,7 @@ ARG APPD_AGENT_URL
 WORKDIR /app
 
 # Copy application binary
-COPY ${JAR_FILE} /app/petclinic.jar
+COPY --from=build /workspace/${JAR_FILE} /app/petclinic.jar
 
 # Prepare AppDynamics agent location and optionally download the Java agent
 RUN set -eux; \
@@ -47,4 +60,4 @@ ENV APPDYNAMICS_CONTROLLER_HOST_NAME="" \
 ENV SPRING_PROFILES_ACTIVE=""
 
 # Start the application with AppDynamics instrumentation
-ENTRYPOINT ["sh", "-c", "if [ -f /opt/appdynamics/javaagent.jar ]; then JAVA_TOOL_OPTIONS=\"-javaagent:/opt/appdynamics/javaagent.jar ${JAVA_TOOL_OPTIONS:-}\"; fi; exec java ${JAVA_TOOL_OPTIONS:+$JAVA_TOOL_OPTIONS }-jar /app/petclinic.jar"]
+ENTRYPOINT ["sh", "-c", "if [ -f /opt/appdynamics/javaagent.jar ]; then JAVA_TOOL_OPTIONS=\\\"-javaagent:/opt/appdynamics/javaagent.jar ${JAVA_TOOL_OPTIONS:-}\\\"; fi; exec java ${JAVA_TOOL_OPTIONS:+$JAVA_TOOL_OPTIONS }-jar /app/petclinic.jar"]
