@@ -130,6 +130,8 @@ Follow these steps to clone the repository, build the AppDynamics-enabled image,
      docker compose up -d mysql
      ```
 
+     The compose file no longer binds a host `conf.d` directory into MySQL, so Docker Desktop users do not need to adjust file-sharing settings. If you want to supply custom MySQL configuration later, create a `conf.d` folder, ensure it is shared in Docker Desktop (Preferences → Resources → File Sharing), and add a bind mount back into `docker-compose.yml` (e.g., `./conf.d:/etc/mysql/conf.d:ro`).
+
    - PostgreSQL:
 
      ```bash
