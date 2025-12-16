@@ -39,11 +39,50 @@ Or you can run it from Maven directly using the Spring Boot Maven plugin. If you
 
 ## Building a Container
 
-There is no `Dockerfile` in this project. You can build a container image (if you have a docker daemon) using the Spring Boot build plugin:
+You can build a container image (if you have a docker daemon) using the Spring Boot build plugin:
 
 ```bash
 ./mvnw spring-boot:build-image
 ```
+
+To build an AppDynamics-enabled image, use the provided Dockerfile instead of the Spring Boot build plugin:
+
+- Build with Docker Compose (preferred for using the compose profiles below):
+
+  ```bash
+  docker compose build petclinic
+  ```
+
+- Build directly with Docker:
+
+  ```bash
+  docker build -t petclinic-appd .
+  ```
+
+### AppDynamics configuration
+
+The AppDynamics Java agent can be baked into the image (as configured in the Dockerfile) or mounted at runtime if you prefer to provide your own bits. The application expects the following environment variables to be set so the agent can phone home:
+
+```bash
+APPDYNAMICS_CONTROLLER_HOST_NAME=<controller-host>
+APPDYNAMICS_CONTROLLER_PORT=<controller-port>
+APPDYNAMICS_ACCOUNT_NAME=<account-name>
+APPDYNAMICS_ACCOUNT_ACCESS_KEY=<access-key>
+APPDYNAMICS_APPLICATION_NAME=<application-name>
+APPDYNAMICS_TIER_NAME=<tier-name>
+APPDYNAMICS_NODE_NAME=<node-name>
+```
+
+If you are mounting your own agent instead of using the baked-in copy, add a volume when you start the container:
+
+```bash
+docker run \
+  -v /path/to/appdynamics/javaagent:/opt/appdynamics/javaagent \
+  --env-file ./appd.env \
+  petclinic-appd
+```
+
+The `--env-file` flag is optional but useful for keeping your controller credentials outside of the compose file.
 
 ## In case you find a bug/suggested improvement for Spring Petclinic
 
@@ -83,6 +122,22 @@ or
 ```bash
 docker compose up postgres
 ```
+
+To run the application and database together with Docker Compose, start the `app` service alongside the database for your chosen profile:
+
+- MySQL profile (default):
+
+  ```bash
+  docker compose up app mysql
+  ```
+
+- PostgreSQL profile:
+
+  ```bash
+  SPRING_PROFILES_ACTIVE=postgres docker compose up app postgres
+  ```
+
+The `SPRING_PROFILES_ACTIVE` environment variable ensures the application uses the matching datasource configuration.
 
 ## Test Applications
 
