@@ -1,0 +1,26 @@
+Include AppD in the Build
+
+
+docker build \                                            
+--build-arg APPD_AGENT_TOKEN="xxxxxxx" \
+--build-arg APPD_AGENT_URL="https://download.appdynamics.com/download/prox/download-file/java-jdk8/26.4.0.37853/AppServerAgent-1.8-26.4.0.37853.zip" \
+-t petclinic-appd .
+
+docker compose up -d mysql
+
+docker run -p 8080:8080 --env-file appd.env petclinic-appd
+
+---------------
+
+Works Best!!!!
+Mount a volume that includes Appdynamic agent
+
+docker build -t petclinic-appd .
+
+docker compose up -d mysql
+
+docker run \
+  -p 8080:8080 \
+  -v /Users/chamato/DockerShare/ver26.4.0.37853:/opt/appdynamics \
+  --env-file ./appd.env \
+  petclinic-appd
